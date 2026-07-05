@@ -2,8 +2,9 @@
    --paper: soapy off-white, --ink: deep pine, --fresh: done-green,
    --rust: overdue, --brass: highlight. */
 :root {
-  --paper: #f2f4ef;
+  --paper: #E6F0C6;
   --card: #ffffff;
+  --secondary: #76B262;
   --ink: #22322b;
   --muted: #6f7f74;
   --line: #dde3da;
@@ -39,6 +40,7 @@ a { color: var(--fresh); }
 
 /* Top bar */
 .topbar {
+  position: relative;
   display: flex; align-items: center; gap: 1.25rem;
   padding: 0.9rem 0; margin-bottom: 1.5rem;
   border-bottom: 2px solid var(--ink);
@@ -54,9 +56,29 @@ a { color: var(--fresh); }
 .topbar .spacer { flex: 1; }
 .whoami { color: var(--muted); font-size: 0.9rem; }
 
+.burger {
+  display: none; flex-direction: column; justify-content: center; gap: 4px;
+  background: transparent; border: 1px solid var(--line); padding: 0.5rem 0.6rem;
+}
+.burger span { display: block; width: 18px; height: 2px; background: var(--ink); }
+
+@media (max-width: 720px) {
+  .burger { display: flex; }
+  .topbar nav {
+    display: none;
+    position: absolute; top: 100%; left: 0; right: 0; margin-top: 0.5rem;
+    flex-direction: column; gap: 0.15rem;
+    background: var(--card); border: 1px solid var(--line); border-radius: var(--radius);
+    padding: 0.5rem; z-index: 40;
+  }
+  .topbar nav.open { display: flex; }
+  .topbar nav a { padding: 0.6rem 0.75rem; border-radius: 8px; }
+  .topbar nav a.active, .topbar nav a:hover { background: color-mix(in srgb, var(--fresh) 12%, white); }
+}
+
 /* Cards & layout */
 .card {
-  background: var(--card);
+  background: var(--secondary);
   border: 1px solid var(--line);
   border-radius: var(--radius);
   padding: 1.1rem 1.25rem;
@@ -126,6 +148,46 @@ button:disabled { opacity: 0.5; cursor: default; }
 .msg.ok { background: color-mix(in srgb, var(--fresh) 12%, white); color: var(--fresh); }
 
 .empty { color: var(--muted); font-style: italic; padding: 0.5rem 0; }
+
+.modal-overlay {
+  position: fixed; inset: 0;
+  background: rgba(20, 30, 24, 0.45);
+  display: flex; align-items: center; justify-content: center;
+  padding: 1rem; z-index: 50;
+}
+.modal {
+  background: var(--card); border-radius: var(--radius);
+  padding: 1.25rem 1.4rem; max-width: 480px; width: 100%;
+  max-height: 90vh; overflow-y: auto;
+}
+
+/* Weekly overview */
+.weekly-mobile { display: none; }
+table.weekly-table {
+  width: 100%; border-collapse: collapse; table-layout: fixed;
+}
+table.weekly-table th, table.weekly-table td {
+  border: 1px solid var(--line); vertical-align: top;
+  padding: 0.5rem; width: 14.28%;
+}
+table.weekly-table th { text-align: left; }
+table.weekly-table th .sub { font-weight: 400; }
+table.weekly-table th.today, table.weekly-table td.today {
+  background: color-mix(in srgb, var(--fresh) 8%, white);
+}
+.weekly-chore {
+  margin-bottom: 0.6rem; padding-bottom: 0.5rem;
+  border-bottom: 1px dashed var(--line);
+}
+.weekly-chore:last-child { border-bottom: none; margin-bottom: 0; }
+.weekly-chore .name { font-weight: 700; font-size: 0.85rem; }
+.weekly-chore .sub { color: var(--muted); font-size: 0.72rem; }
+.weekly-chore button { margin-top: 0.3rem; font-size: 0.75rem; padding: 0.3rem 0.5rem; }
+
+@media (max-width: 720px) {
+  .weekly-desktop { display: none; }
+  .weekly-mobile { display: block; }
+}
 
 .auth-wrap { max-width: 400px; margin: 8vh auto 0; }
 .auth-wrap .brand { font-size: 1.6rem; display: block; margin-bottom: 1rem; text-align: center; }

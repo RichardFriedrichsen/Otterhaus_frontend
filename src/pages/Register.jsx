@@ -1,12 +1,10 @@
 import React, { useState } from "react";
-import { Link, useNavigate, useSearchParams } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { api, saveSession } from "../api";
 
 export default function Register() {
   const [form, setForm] = useState({ username: "", email: "", password: "" });
   const [error, setError] = useState("");
-  const [params] = useSearchParams();
-  const inviteToken = params.get("invite");
   const navigate = useNavigate();
 
   const set = (k) => (e) => setForm({ ...form, [k]: e.target.value });
@@ -17,7 +15,6 @@ export default function Register() {
     try {
       const { token, user } = await api.register(form);
       saveSession(token, user);
-      if (inviteToken) await api.acceptInvite(inviteToken).catch(() => {});
       navigate("/");
     } catch (err) {
       setError(err.message);
@@ -29,7 +26,6 @@ export default function Register() {
       <span className="brand">chore<span style={{ color: "var(--fresh)" }}>board</span></span>
       <div className="card">
         <h1>Create account</h1>
-        {inviteToken && <p className="msg ok">You're joining via an invite — register with the invited email address.</p>}
         <form onSubmit={submit}>
           <label htmlFor="u">Username</label>
           <input id="u" value={form.username} onChange={set("username")} required autoFocus />

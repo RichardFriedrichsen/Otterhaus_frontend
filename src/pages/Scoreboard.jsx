@@ -34,7 +34,7 @@ export default function Scoreboard() {
       {board && (
         <div className="grid2">
           <div className="card">
-            <h2>Totals</h2>
+            <h2>Totals (all time)</h2>
             {board.scores.map((s, i) => (
               <div className="score-row" key={s.user.id}>
                 <span className="rank">{i + 1}</span>
