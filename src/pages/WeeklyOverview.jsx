@@ -1,5 +1,22 @@
 import React, { useEffect, useState } from "react";
-import { api } from "../api";
+import { api, currentUser } from "../api";
+
+function PersonFilter({ value, onChange, people }) {
+  const me = currentUser();
+  return (
+    <label style={{ display: "flex", alignItems: "center", gap: "0.4rem" }}>
+      Showing
+      <select value={value} onChange={(e) => onChange(e.target.value)}>
+        <option value="all">Everyone</option>
+        {people.map((p) => (
+          <option key={p.id} value={p.id}>
+            {me && String(p.id) === String(me.id) ? `${p.username} (me)` : p.username}
+          </option>
+        ))}
+      </select>
+    </label>
+  );
+}
 
 function assignedLabel(chore) {
   return chore.assigned_to_detail?.length > 0
@@ -62,12 +79,16 @@ function CompactDayChores({ day, onComplete }) {
 
 export default function WeeklyOverview() {
   const [days, setDays] = useState(null);
+  const [people, setPeople] = useState([]);
   const [selected, setSelected] = useState(0);
   const [msg, setMsg] = useState(null);
+  const [person, setPerson] = useState(String(currentUser()?.id ?? "all"));
 
   const load = () =>
-    api.weeklyOverview().then((r) => setDays(r.days)).catch((e) => setMsg({ t: "error", m: e.message }));
-  useEffect(() => { load(); }, []);
+    api.weeklyOverview(person)
+      .then((r) => { setDays(r.days); setPeople(r.people); })
+      .catch((e) => setMsg({ t: "error", m: e.message }));
+  useEffect(() => { load(); }, [person]);
 
   async function complete(chore) {
     if (!confirm(`Mark '${chore.name}' as done?`)) return;
@@ -84,7 +105,10 @@ export default function WeeklyOverview() {
 
   return (
     <main>
-      <h1>This week</h1>
+      <div className="row" style={{ alignItems: "center" }}>
+        <h1 style={{ margin: 0 }}>This week</h1>
+        <PersonFilter value={person} onChange={setPerson} people={people} />
+      </div>
       {msg && <p className={`msg ${msg.t}`}>{msg.m}</p>}
 
       <div className="weekly-desktop">

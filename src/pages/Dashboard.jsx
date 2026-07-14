@@ -1,6 +1,23 @@
 import React, { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { api } from "../api";
+import { api, currentUser } from "../api";
+
+function PersonFilter({ value, onChange, people }) {
+  const me = currentUser();
+  return (
+    <label style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: "0.4rem" }}>
+      Showing
+      <select value={value} onChange={(e) => onChange(e.target.value)}>
+        <option value="all">Everyone</option>
+        {people.map((p) => (
+          <option key={p.id} value={p.id}>
+            {me && String(p.id) === String(me.id) ? `${p.username} (me)` : p.username}
+          </option>
+        ))}
+      </select>
+    </label>
+  );
+}
 
 function ChoreRow({ chore, onComplete }) {
   const overdue = chore.days_overdue > 0;
@@ -45,9 +62,6 @@ const emptyTaskForm = {
   house_id: "",
   room_id: "",
   name: "",
-  interval_days: 7,
-  recurrence_type: "floating",
-  start_date: "",
   assignee: "all",
 };
 
@@ -64,6 +78,7 @@ function AddTaskModal({ houses, onClose, onCreated }) {
   const members = house?.members || [];
   const selectedRoom = rooms.find((r) => String(r.id) === String(form.room_id));
   const roomTaskNames = selectedRoom ? [...new Set(selectedRoom.chores.map((c) => c.name))] : [];
+  const matchedChore = selectedRoom?.chores.find((c) => c.name === form.name);
 
   function set(patch) {
     setForm((f) => ({ ...f, ...patch }));
@@ -73,7 +88,7 @@ function AddTaskModal({ houses, onClose, onCreated }) {
   const canSubmit =
     form.name.trim() &&
     form.house_id &&
-    (!isPlanned || (form.room_id && form.interval_days > 0 && (form.recurrence_type !== "fixed" || form.start_date)));
+    (!isPlanned || form.room_id);
 
   async function submit() {
     setSaving(true);
@@ -83,9 +98,9 @@ function AddTaskModal({ houses, onClose, onCreated }) {
         house: isPlanned ? undefined : Number(form.house_id),
         room: form.room_id ? Number(form.room_id) : null,
         name: form.name.trim(),
-        interval_days: isPlanned ? Number(form.interval_days) : null,
-        recurrence_type: isPlanned ? form.recurrence_type : "floating",
-        start_date: isPlanned && form.recurrence_type === "fixed" ? form.start_date : null,
+        interval_days: isPlanned ? matchedChore?.interval_days : null,
+        recurrence_type: isPlanned ? matchedChore?.recurrence_type ?? "floating" : "floating",
+        start_date: isPlanned && matchedChore?.recurrence_type === "fixed" ? matchedChore.start_date : null,
         assigned_to:
           form.assignee === "all" ? members.map((m) => m.id) : [Number(form.assignee)],
       });
@@ -192,43 +207,6 @@ function AddTaskModal({ houses, onClose, onCreated }) {
           </>
         )}
 
-        {isPlanned && (
-          <div className="row">
-            <div>
-              <label htmlFor="task-interval">Repeat every (days)</label>
-              <input
-                id="task-interval"
-                type="number"
-                min="1"
-                value={form.interval_days}
-                onChange={(e) => set({ interval_days: e.target.value })}
-              />
-            </div>
-            <div>
-              <label htmlFor="task-recurrence">Schedule</label>
-              <select
-                id="task-recurrence"
-                value={form.recurrence_type}
-                onChange={(e) => set({ recurrence_type: e.target.value })}
-              >
-                <option value="floating">Every N days after completed</option>
-                <option value="fixed">Every N days from a start date</option>
-              </select>
-            </div>
-            {form.recurrence_type === "fixed" && (
-              <div>
-                <label htmlFor="task-start">Start date</label>
-                <input
-                  id="task-start"
-                  type="date"
-                  value={form.start_date}
-                  onChange={(e) => set({ start_date: e.target.value })}
-                />
-              </div>
-            )}
-          </div>
-        )}
-
         {members.length > 0 && (
           <>
             <label htmlFor="task-assignee">Assign to</label>
@@ -261,10 +239,13 @@ export default function Dashboard() {
   const [houses, setHouses] = useState([]);
   const [msg, setMsg] = useState(null);
   const [showAddTask, setShowAddTask] = useState(false);
+  const [person, setPerson] = useState(String(currentUser()?.id ?? "all"));
 
-  const load = () => api.dashboard().then(setData).catch((e) => setMsg({ t: "error", m: e.message }));
+  const load = () => api.dashboard(person).then(setData).catch((e) => setMsg({ t: "error", m: e.message }));
   useEffect(() => {
     load();
+  }, [person]);
+  useEffect(() => {
     api.houses().then(setHouses).catch((e) => setMsg({ t: "error", m: e.message }));
   }, []);
 
@@ -300,6 +281,7 @@ export default function Dashboard() {
         <button className="ghost fit" onClick={emailOverview}>
           Email me this overview
         </button>
+        <PersonFilter value={person} onChange={setPerson} people={data.people} />
       </div>
       {msg && <p className={`msg ${msg.t}`}>{msg.m}</p>}
 

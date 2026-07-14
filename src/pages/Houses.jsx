@@ -135,6 +135,154 @@ const emptyChoreForm = {
   assignee: "all",
 };
 
+function assigneeValueFor(chore, members) {
+  const ids = new Set((chore.assigned_to_detail || []).map((u) => u.id));
+  if (members.length > 0 && ids.size === members.length && members.every((m) => ids.has(m.id))) {
+    return "all";
+  }
+  const first = chore.assigned_to_detail?.[0];
+  return first ? String(first.id) : "all";
+}
+
+function ChoreListItem({ chore: c, members, run }) {
+  const [editing, setEditing] = useState(false);
+  const [form, setForm] = useState(null);
+  const isPlanned = c.task_type === "planned";
+
+  function startEdit() {
+    setForm({
+      name: c.name,
+      interval_days: c.interval_days ?? 7,
+      recurrence_type: c.recurrence_type || "floating",
+      start_date: c.start_date || "",
+      assignee: assigneeValueFor(c, members),
+    });
+    setEditing(true);
+  }
+
+  const canSave =
+    form &&
+    form.name.trim() &&
+    (!isPlanned || (form.interval_days > 0 && (form.recurrence_type !== "fixed" || form.start_date)));
+
+  async function save() {
+    const payload = {
+      name: form.name.trim(),
+      assigned_to: form.assignee === "all" ? members.map((m) => m.id) : [Number(form.assignee)],
+    };
+    if (isPlanned) {
+      payload.interval_days = Number(form.interval_days);
+      payload.recurrence_type = form.recurrence_type;
+      payload.start_date = form.recurrence_type === "fixed" ? form.start_date : null;
+    }
+    await run(() => api.updateChore(c.id, payload), `Chore '${form.name}' updated.`);
+    setEditing(false);
+  }
+
+  if (editing) {
+    return (
+      <li className="chore">
+        <div className="meta" style={{ width: "100%" }}>
+          <div className="row">
+            <div>
+              <label htmlFor={`ecn-${c.id}`}>Name</label>
+              <input
+                id={`ecn-${c.id}`}
+                value={form.name}
+                onChange={(e) => setForm({ ...form, name: e.target.value })}
+              />
+            </div>
+            {isPlanned && (
+              <>
+                <div style={{ maxWidth: 160 }}>
+                  <label htmlFor={`eci-${c.id}`}>Repeat every (days)</label>
+                  <input
+                    id={`eci-${c.id}`}
+                    type="number"
+                    min="1"
+                    value={form.interval_days}
+                    onChange={(e) => setForm({ ...form, interval_days: e.target.value })}
+                  />
+                </div>
+                <div style={{ maxWidth: 220 }}>
+                  <label htmlFor={`ecrt-${c.id}`}>Schedule</label>
+                  <select
+                    id={`ecrt-${c.id}`}
+                    value={form.recurrence_type}
+                    onChange={(e) => setForm({ ...form, recurrence_type: e.target.value })}
+                  >
+                    <option value="floating">Schedule after completion</option>
+                    <option value="fixed">Schedule fixed</option>
+                  </select>
+                </div>
+                {form.recurrence_type === "fixed" && (
+                  <div style={{ maxWidth: 170 }}>
+                    <label htmlFor={`ecsd-${c.id}`}>Start date</label>
+                    <input
+                      id={`ecsd-${c.id}`}
+                      type="date"
+                      value={form.start_date}
+                      onChange={(e) => setForm({ ...form, start_date: e.target.value })}
+                    />
+                  </div>
+                )}
+              </>
+            )}
+            {members?.length > 0 && (
+              <div style={{ maxWidth: 220 }}>
+                <label htmlFor={`eca-${c.id}`}>Assign to</label>
+                <select
+                  id={`eca-${c.id}`}
+                  value={form.assignee}
+                  onChange={(e) => setForm({ ...form, assignee: e.target.value })}
+                >
+                  <option value="all">All</option>
+                  {members.map((m) => (
+                    <option key={m.id} value={m.id}>{m.username}</option>
+                  ))}
+                </select>
+              </div>
+            )}
+          </div>
+        </div>
+        <div className="row" style={{ gap: "0.4rem" }}>
+          <button className="primary fit" disabled={!canSave} onClick={save}>Save</button>
+          <button className="ghost fit" onClick={() => setEditing(false)}>Cancel</button>
+        </div>
+      </li>
+    );
+  }
+
+  return (
+    <li className={`chore ${c.is_due ? (c.days_overdue > 0 ? "overdue" : "due") : ""}`}>
+      <div className="meta">
+        <div className="name">{c.name}</div>
+        <div className="sub">
+          {c.recurrence_type === "fixed"
+            ? `every ${c.interval_days} days from ${c.start_date}`
+            : `every ${c.interval_days} days`}
+          {" · next due "}{c.due_date}
+          {c.last_completed_by && ` · last done by ${c.last_completed_by}`}
+          {c.assigned_to_detail?.length > 0 &&
+            ` · assigned to ${c.assigned_to_detail.map((u) => u.username).join(" & ")}`}
+        </div>
+      </div>
+      <div className="row" style={{ gap: "0.4rem" }}>
+        <button className="fit" onClick={startEdit}>Edit</button>
+        <button
+          className="danger fit"
+          onClick={() => {
+            if (confirm(`Delete chore '${c.name}'?`))
+              run(() => api.deleteChore(c.id), `Chore '${c.name}' deleted.`);
+          }}
+        >
+          Delete
+        </button>
+      </div>
+    </li>
+  );
+}
+
 function RoomBlock({ room, members, run }) {
   const [form, setForm] = useState(emptyChoreForm);
 
@@ -160,29 +308,7 @@ function RoomBlock({ room, members, run }) {
 
       <ul className="plain" style={{ marginTop: "0.5rem" }}>
         {room.chores.map((c) => (
-          <li key={c.id} className={`chore ${c.is_due ? (c.days_overdue > 0 ? "overdue" : "due") : ""}`}>
-            <div className="meta">
-              <div className="name">{c.name}</div>
-              <div className="sub">
-                {c.recurrence_type === "fixed"
-                  ? `every ${c.interval_days} days from ${c.start_date}`
-                  : `every ${c.interval_days} days`}
-                {" · next due "}{c.due_date}
-                {c.last_completed_by && ` · last done by ${c.last_completed_by}`}
-                {c.assigned_to_detail?.length > 0 &&
-                  ` · assigned to ${c.assigned_to_detail.map((u) => u.username).join(" & ")}`}
-              </div>
-            </div>
-            <button
-              className="danger fit"
-              onClick={() => {
-                if (confirm(`Delete chore '${c.name}'?`))
-                  run(() => api.deleteChore(c.id), `Chore '${c.name}' deleted.`);
-              }}
-            >
-              Delete
-            </button>
-          </li>
+          <ChoreListItem key={c.id} chore={c} members={members} run={run} />
         ))}
       </ul>
 
@@ -213,8 +339,8 @@ function RoomBlock({ room, members, run }) {
             value={form.recurrence_type}
             onChange={(e) => setForm({ ...form, recurrence_type: e.target.value })}
           >
-            <option value="floating">Every N days after completed</option>
-            <option value="fixed">Every N days from a start date</option>
+            <option value="floating">Schedule after completion</option>
+            <option value="fixed">Schedule fixed</option>
           </select>
         </div>
         {form.recurrence_type === "fixed" && (
