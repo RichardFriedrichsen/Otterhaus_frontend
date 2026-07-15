@@ -98,9 +98,13 @@ function AddTaskModal({ houses, onClose, onCreated }) {
         house: isPlanned ? undefined : Number(form.house_id),
         room: form.room_id ? Number(form.room_id) : null,
         name: form.name.trim(),
+        // Always floating, anchored to today: adding a task here means "this
+        // needs doing now", regardless of the room task's usual schedule —
+        // it should show up under due today, not wherever its normal fixed
+        // schedule would otherwise place it.
         interval_days: isPlanned ? matchedChore?.interval_days : null,
-        recurrence_type: isPlanned ? matchedChore?.recurrence_type ?? "floating" : "floating",
-        start_date: isPlanned && matchedChore?.recurrence_type === "fixed" ? matchedChore.start_date : null,
+        recurrence_type: "floating",
+        start_date: null,
         assigned_to:
           form.assignee === "all" ? members.map((m) => m.id) : [Number(form.assignee)],
       });
