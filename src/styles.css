@@ -127,6 +127,12 @@ button:disabled { opacity: 0.5; cursor: default; }
 .chore .meta { flex: 1; min-width: 0; }
 .chore .name { font-weight: 700; }
 .chore .sub { color: var(--muted); font-size: 0.85rem; }
+.chore .sub-list {
+  list-style: none; margin: 0; padding: 0;
+  color: var(--muted); font-size: 0.85rem;
+  display: flex; flex-wrap: wrap; gap: 0 0.4em;
+}
+.chore .sub-list li + li::before { content: "· "; }
 .badge {
   font-size: 0.75rem; font-weight: 700;
   padding: 0.15rem 0.55rem; border-radius: 999px; white-space: nowrap;
@@ -138,6 +144,8 @@ button:disabled { opacity: 0.5; cursor: default; }
 @media (max-width: 720px) {
   .chore { flex-direction: column; align-items: stretch; }
   .chore-actions { display: flex; align-items: center; gap: 0.5rem; }
+  .chore .sub-list { flex-direction: column; gap: 0.15rem 0; }
+  .chore .sub-list li + li::before { content: none; }
 }
 
 /* Scoreboard */

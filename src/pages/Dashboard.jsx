@@ -32,14 +32,15 @@ function ChoreRow({ chore, onComplete }) {
     <li className={cls}>
       <div className="meta">
         <div className="name">{chore.name}</div>
-        <div className="sub">
-          {chore.house_name}
-          {chore.room_name && ` · ${chore.room_name}`} · {schedule}
-          {chore.last_completed_by &&
-            ` · last done by ${chore.last_completed_by}`}
-          {chore.assigned_to_detail?.length > 0 &&
-            ` · assigned to ${chore.assigned_to_detail.map((u) => u.username).join(" & ")}`}
-        </div>
+        <ul className="sub-list">
+          <li>{chore.house_name}</li>
+          {chore.room_name && <li>{chore.room_name}</li>}
+          <li>{schedule}</li>
+          {chore.last_completed_by && <li>last done by {chore.last_completed_by}</li>}
+          {chore.assigned_to_detail?.length > 0 && (
+            <li>assigned to {chore.assigned_to_detail.map((u) => u.username).join(" & ")}</li>
+          )}
+        </ul>
       </div>
       <div className="chore-actions">
         {chore.is_due ? (
