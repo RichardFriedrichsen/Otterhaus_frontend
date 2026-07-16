@@ -135,6 +135,11 @@ button:disabled { opacity: 0.5; cursor: default; }
 .badge.overdue { background: color-mix(in srgb, var(--rust) 14%, white); color: var(--rust); }
 .badge.ok { background: color-mix(in srgb, var(--fresh) 14%, white); color: var(--fresh); }
 
+@media (max-width: 720px) {
+  .chore { flex-direction: column; align-items: stretch; }
+  .chore-actions { display: flex; align-items: center; gap: 0.5rem; }
+}
+
 /* Scoreboard */
 .score-row {
   display: flex; align-items: baseline; gap: 0.8rem;

@@ -41,18 +41,20 @@ function ChoreRow({ chore, onComplete }) {
             ` · assigned to ${chore.assigned_to_detail.map((u) => u.username).join(" & ")}`}
         </div>
       </div>
-      {chore.is_due ? (
-        <span className={`badge ${overdue ? "overdue" : "due"}`}>
-          {overdue ? `overdue by ${chore.days_overdue}d` : "due today"}
-        </span>
-      ) : (
-        <span className="badge ok">due {chore.due_date}</span>
-      )}
-      {onComplete && (
-        <button className="primary fit" onClick={() => onComplete(chore)}>
-          Mark done
-        </button>
-      )}
+      <div className="chore-actions">
+        {chore.is_due ? (
+          <span className={`badge ${overdue ? "overdue" : "due"}`}>
+            {overdue ? `overdue by ${chore.days_overdue}d` : "due today"}
+          </span>
+        ) : (
+          <span className="badge ok">due {chore.due_date}</span>
+        )}
+        {onComplete && (
+          <button className="primary fit" onClick={() => onComplete(chore)}>
+            Mark done
+          </button>
+        )}
+      </div>
     </li>
   );
 }

@@ -42,9 +42,11 @@ function ChoreItem({ chore, onComplete }) {
           {assigned && ` · assigned to ${assigned}`}
         </div>
       </div>
-      <button className="primary fit" onClick={() => onComplete(chore)}>
-        Mark done
-      </button>
+      <div className="chore-actions">
+        <button className="primary fit" onClick={() => onComplete(chore)}>
+          Mark done
+        </button>
+      </div>
     </li>
   );
 }

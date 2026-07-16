@@ -245,7 +245,7 @@ function ChoreListItem({ chore: c, members, run }) {
             )}
           </div>
         </div>
-        <div className="row" style={{ gap: "0.4rem" }}>
+        <div className="row chore-actions" style={{ gap: "0.4rem" }}>
           <button className="primary fit" disabled={!canSave} onClick={save}>Save</button>
           <button className="ghost fit" onClick={() => setEditing(false)}>Cancel</button>
         </div>
@@ -267,7 +267,7 @@ function ChoreListItem({ chore: c, members, run }) {
             ` · assigned to ${c.assigned_to_detail.map((u) => u.username).join(" & ")}`}
         </div>
       </div>
-      <div className="row" style={{ gap: "0.4rem" }}>
+      <div className="row chore-actions" style={{ gap: "0.4rem" }}>
         <button className="fit" onClick={startEdit}>Edit</button>
         <button
           className="danger fit"
