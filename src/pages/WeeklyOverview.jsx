@@ -36,11 +36,11 @@ function ChoreItem({ chore, onComplete }) {
     <li className="chore">
       <div className="meta">
         <div className="name">{chore.name}</div>
-        <div className="sub">
-          {chore.house_name}
-          {chore.room_name && ` · ${chore.room_name}`} · {schedule}
-          {assigned && ` · assigned to ${assigned}`}
-        </div>
+        <ul className="sub-list">
+          {chore.room_name && <li>{chore.room_name}</li>}
+          <li>{schedule}</li>
+          {assigned && <li>assigned to {assigned}</li>}
+        </ul>
       </div>
       <div className="chore-actions">
         <button className="primary fit" onClick={() => onComplete(chore)}>
@@ -57,7 +57,7 @@ function CompactChoreItem({ chore, onComplete }) {
     <div className="weekly-chore">
       <div className="name">{chore.name}</div>
       <div className="sub">
-        {chore.room_name || chore.house_name}
+        {chore.room_name}
         {assigned && ` · ${assigned}`}
       </div>
       <button className="primary fit" onClick={() => onComplete(chore)}>Done</button>

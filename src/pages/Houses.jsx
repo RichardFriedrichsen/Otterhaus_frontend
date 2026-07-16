@@ -257,15 +257,18 @@ function ChoreListItem({ chore: c, members, run }) {
     <li className={`chore ${c.is_due ? (c.days_overdue > 0 ? "overdue" : "due") : ""}`}>
       <div className="meta">
         <div className="name">{c.name}</div>
-        <div className="sub">
-          {c.recurrence_type === "fixed"
-            ? `every ${c.interval_days} days from ${c.start_date}`
-            : `every ${c.interval_days} days`}
-          {" · next due "}{c.due_date}
-          {c.last_completed_by && ` · last done by ${c.last_completed_by}`}
-          {c.assigned_to_detail?.length > 0 &&
-            ` · assigned to ${c.assigned_to_detail.map((u) => u.username).join(" & ")}`}
-        </div>
+        <ul className="sub-list">
+          <li>
+            {c.recurrence_type === "fixed"
+              ? `every ${c.interval_days} days from ${c.start_date}`
+              : `every ${c.interval_days} days`}
+          </li>
+          <li>next due {c.due_date}</li>
+          {c.last_completed_by && <li>last done by {c.last_completed_by}</li>}
+          {c.assigned_to_detail?.length > 0 && (
+            <li>assigned to {c.assigned_to_detail.map((u) => u.username).join(" & ")}</li>
+          )}
+        </ul>
       </div>
       <div className="row chore-actions" style={{ gap: "0.4rem" }}>
         <button className="fit" onClick={startEdit}>Edit</button>
