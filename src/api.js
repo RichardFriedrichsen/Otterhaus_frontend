@@ -45,6 +45,17 @@ export const api = {
   updateChore: (id, b) => request(`/chores/${id}/`, { method: "PATCH", body: b }),
   deleteChore: (id) => request(`/chores/${id}/`, { method: "DELETE" }),
   completeChore: (id) => request(`/chores/${id}/complete/`, { method: "POST" }),
+  recipes: (query) => request(`/recipes/${query ? `?${query}` : ""}`),
+  createRecipe: (b) => request("/recipes/", { method: "POST", body: b }),
+  updateRecipe: (id, b) => request(`/recipes/${id}/`, { method: "PATCH", body: b }),
+  deleteRecipe: (id) => request(`/recipes/${id}/`, { method: "DELETE" }),
+  recipeCategories: () => request("/recipe-categories/"),
+  createRecipeCategory: (b) => request("/recipe-categories/", { method: "POST", body: b }),
+  deleteRecipeCategory: (id) => request(`/recipe-categories/${id}/`, { method: "DELETE" }),
+  ingredients: () => request("/ingredients/"),
+  createIngredient: (b) => request("/ingredients/", { method: "POST", body: b }),
+  updateIngredient: (id, b) => request(`/ingredients/${id}/`, { method: "PATCH", body: b }),
+  deleteIngredient: (id) => request(`/ingredients/${id}/`, { method: "DELETE" }),
 };
 
 export function saveSession(token, user) {

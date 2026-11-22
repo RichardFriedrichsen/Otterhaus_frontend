@@ -11,6 +11,8 @@ import Dashboard from "./pages/Dashboard";
 import Houses from "./pages/Houses";
 import Scoreboard from "./pages/Scoreboard";
 import WeeklyOverview from "./pages/WeeklyOverview";
+import Recipes from "./pages/Recipes";
+import Ingredients from "./pages/Ingredients";
 
 function RequireAuth({ children }) {
   return isAuthed() ? children : <Navigate to="/login" replace />;
@@ -40,6 +42,8 @@ function TopBar() {
         <NavLink to="/weekly" onClick={closeMenu}>This week</NavLink>
         <NavLink to="/houses" onClick={closeMenu}>Houses</NavLink>
         <NavLink to="/scoreboard" onClick={closeMenu}>Scoreboard</NavLink>
+        <NavLink to="/recipes" onClick={closeMenu}>Recipes</NavLink>
+        <NavLink to="/ingredients" onClick={closeMenu}>Ingredients</NavLink>
       </nav>
       <div className="spacer" />
       <span className="whoami">{user?.username}</span>
@@ -67,6 +71,8 @@ export default function App() {
           <Route path="/weekly" element={<RequireAuth><WeeklyOverview /></RequireAuth>} />
           <Route path="/houses" element={<RequireAuth><Houses /></RequireAuth>} />
           <Route path="/scoreboard" element={<RequireAuth><Scoreboard /></RequireAuth>} />
+          <Route path="/recipes" element={<RequireAuth><Recipes /></RequireAuth>} />
+          <Route path="/ingredients" element={<RequireAuth><Ingredients /></RequireAuth>} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </div>
