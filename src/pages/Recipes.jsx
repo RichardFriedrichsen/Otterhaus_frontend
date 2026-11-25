@@ -38,8 +38,10 @@ function RecipeIngredientRows({ rows, ingredients, onChange, idPrefix }) {
     onChange(rows.filter((_, i) => i !== idx));
   }
   function addRow() {
-    onChange([...rows, { ingredient_id: "", amount: "", unit: UNIT_OPTIONS[0].value }]);
+    onChange([...rows, { ingredient_name: "", amount: "", unit: UNIT_OPTIONS[0].value }]);
   }
+
+  const datalistId = `${idPrefix}-ingredient-options`;
 
   return (
     <div>
@@ -47,14 +49,14 @@ function RecipeIngredientRows({ rows, ingredients, onChange, idPrefix }) {
         <div className="row" key={idx}>
           <div>
             <label htmlFor={`${idPrefix}-ingredient-${idx}`}>Ingredient</label>
-            <select
+            <input
               id={`${idPrefix}-ingredient-${idx}`}
-              value={row.ingredient_id}
-              onChange={(e) => updateRow(idx, { ingredient_id: e.target.value })}
-            >
-              <option value="">Select…</option>
-              {ingredients.map((i) => <option key={i.id} value={i.id}>{i.name}</option>)}
-            </select>
+              list={datalistId}
+              value={row.ingredient_name}
+              onChange={(e) => updateRow(idx, { ingredient_name: e.target.value })}
+              placeholder="Search or type a new ingredient…"
+              autoComplete="off"
+            />
           </div>
           <div style={{ maxWidth: 110 }}>
             <label htmlFor={`${idPrefix}-amount-${idx}`}>Amount</label>
@@ -80,9 +82,34 @@ function RecipeIngredientRows({ rows, ingredients, onChange, idPrefix }) {
           <button type="button" className="danger fit" onClick={() => removeRow(idx)}>Remove</button>
         </div>
       ))}
+      <datalist id={datalistId}>
+        {ingredients.map((i) => <option key={i.id} value={i.name} />)}
+      </datalist>
       <button type="button" className="ghost fit" onClick={addRow}>+ Add ingredient</button>
+      <p className="sub" style={{ marginTop: "0.3rem" }}>
+        Pick an existing ingredient from the list, or type a new name to add it.
+      </p>
     </div>
   );
+}
+
+/** Resolves each row's typed ingredient name to an id, creating new
+ * ingredients on the fly for names that don't match an existing one
+ * (case-insensitively) — including duplicates typed more than once
+ * in the same submission. */
+async function resolveIngredientRows(houseId, houseIngredients, rows) {
+  const known = [...houseIngredients];
+  const resolved = [];
+  for (const row of rows) {
+    const norm = row.ingredient_name.trim().toLowerCase();
+    let match = known.find((i) => i.name.trim().toLowerCase() === norm);
+    if (!match) {
+      match = await api.createIngredient({ house: Number(houseId), name: row.ingredient_name.trim() });
+      known.push(match);
+    }
+    resolved.push({ ingredient: match.id, amount: Number(row.amount), unit: row.unit });
+  }
+  return resolved;
 }
 
 function CategoryManager({ houses, categories, run }) {
@@ -172,22 +199,19 @@ function AddRecipeModal({ houses, categories, ingredients, onClose, onCreated })
 
   const houseCategories = categories.filter((c) => String(c.house) === form.house_id);
   const houseIngredients = ingredients.filter((i) => String(i.house) === form.house_id);
-  const chosenRows = form.ingredient_rows.filter((r) => r.ingredient_id);
+  const chosenRows = form.ingredient_rows.filter((r) => r.ingredient_name.trim());
   const rowsValid = chosenRows.every((r) => r.amount !== "" && Number(r.amount) > 0);
   const canSubmit = form.name.trim() && form.house_id && rowsValid;
 
   async function submit() {
     setSaving(true);
     try {
+      const recipeIngredients = await resolveIngredientRows(form.house_id, houseIngredients, chosenRows);
       await api.createRecipe({
         house: Number(form.house_id),
         name: form.name.trim(),
         category: form.category_id ? Number(form.category_id) : null,
-        recipe_ingredients: chosenRows.map((r) => ({
-          ingredient: Number(r.ingredient_id),
-          amount: Number(r.amount),
-          unit: r.unit,
-        })),
+        recipe_ingredients: recipeIngredients,
         instructions: form.instructions.trim(),
       });
       onCreated();
@@ -233,17 +257,13 @@ function AddRecipeModal({ houses, categories, ingredients, onClose, onCreated })
           {houseCategories.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
         </select>
 
-        {houseIngredients.length > 0 && (
-          <>
-            <label>Ingredients</label>
-            <RecipeIngredientRows
-              idPrefix="add-recipe"
-              rows={form.ingredient_rows}
-              ingredients={houseIngredients}
-              onChange={(rows) => setForm((f) => ({ ...f, ingredient_rows: rows }))}
-            />
-          </>
-        )}
+        <label>Ingredients</label>
+        <RecipeIngredientRows
+          idPrefix="add-recipe"
+          rows={form.ingredient_rows}
+          ingredients={houseIngredients}
+          onChange={(rows) => setForm((f) => ({ ...f, ingredient_rows: rows }))}
+        />
 
         <label htmlFor="recipe-instructions">Instructions (optional)</label>
         <textarea
@@ -276,7 +296,7 @@ function RecipeCard({ recipe, categories, ingredients, run }) {
       name: recipe.name,
       category_id: recipe.category ? String(recipe.category) : "",
       ingredient_rows: (recipe.recipe_ingredients || []).map((ri) => ({
-        ingredient_id: String(ri.ingredient),
+        ingredient_name: ri.ingredient_name,
         amount: String(ri.amount),
         unit: ri.unit,
       })),
@@ -285,22 +305,21 @@ function RecipeCard({ recipe, categories, ingredients, run }) {
     setEditing(true);
   }
 
-  const chosenRows = form ? form.ingredient_rows.filter((r) => r.ingredient_id) : [];
+  const chosenRows = form ? form.ingredient_rows.filter((r) => r.ingredient_name.trim()) : [];
   const rowsValid = chosenRows.every((r) => r.amount !== "" && Number(r.amount) > 0);
   const canSave = form && form.name.trim() && rowsValid;
 
   async function save() {
     await run(
-      () => api.updateRecipe(recipe.id, {
-        name: form.name.trim(),
-        category: form.category_id ? Number(form.category_id) : null,
-        recipe_ingredients: chosenRows.map((r) => ({
-          ingredient: Number(r.ingredient_id),
-          amount: Number(r.amount),
-          unit: r.unit,
-        })),
-        instructions: form.instructions.trim(),
-      }),
+      async () => {
+        const recipeIngredients = await resolveIngredientRows(recipe.house, houseIngredients, chosenRows);
+        return api.updateRecipe(recipe.id, {
+          name: form.name.trim(),
+          category: form.category_id ? Number(form.category_id) : null,
+          recipe_ingredients: recipeIngredients,
+          instructions: form.instructions.trim(),
+        });
+      },
       `Recipe '${form.name}' updated.`
     );
     setEditing(false);
@@ -331,17 +350,15 @@ function RecipeCard({ recipe, categories, ingredients, run }) {
               </select>
             </div>
           </div>
-          {houseIngredients.length > 0 && (
-            <div style={{ marginTop: "0.5rem" }}>
-              <label>Ingredients</label>
-              <RecipeIngredientRows
-                idPrefix={`edit-recipe-${recipe.id}`}
-                rows={form.ingredient_rows}
-                ingredients={houseIngredients}
-                onChange={(rows) => setForm((f) => ({ ...f, ingredient_rows: rows }))}
-              />
-            </div>
-          )}
+          <div style={{ marginTop: "0.5rem" }}>
+            <label>Ingredients</label>
+            <RecipeIngredientRows
+              idPrefix={`edit-recipe-${recipe.id}`}
+              rows={form.ingredient_rows}
+              ingredients={houseIngredients}
+              onChange={(rows) => setForm((f) => ({ ...f, ingredient_rows: rows }))}
+            />
+          </div>
           <label htmlFor={`ri-${recipe.id}`}>Instructions</label>
           <textarea
             id={`ri-${recipe.id}`}
@@ -458,7 +475,7 @@ export default function Recipes() {
           categories={categories}
           ingredients={ingredients}
           onClose={() => setShowAdd(false)}
-          onCreated={() => { loadRecipes(); setMsg({ t: "ok", m: "Recipe added." }); }}
+          onCreated={() => { loadRecipes(); loadRefs(); setMsg({ t: "ok", m: "Recipe added." }); }}
         />
       )}
 
