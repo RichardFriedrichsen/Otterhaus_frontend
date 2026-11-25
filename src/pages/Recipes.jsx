@@ -13,19 +13,50 @@ const UNIT_OPTIONS = [
   { value: "pinch", label: "pinch" },
 ];
 
-function IngredientChips({ items, selected, onToggle }) {
+function IngredientFilterSearch({ ingredients, selected, onChange }) {
+  const [text, setText] = useState("");
+  const selectedItems = ingredients.filter((i) => selected.includes(i.id));
+  const availableItems = ingredients.filter((i) => !selected.includes(i.id));
+
+  function handleChange(value) {
+    const match = availableItems.find(
+      (i) => i.name.trim().toLowerCase() === value.trim().toLowerCase()
+    );
+    if (match) {
+      onChange([...selected, match.id]);
+      setText("");
+    } else {
+      setText(value);
+    }
+  }
+
   return (
-    <div className="row" style={{ flexWrap: "wrap" }}>
-      {items.map((i) => (
-        <button
-          key={i.id}
-          type="button"
-          className={selected.includes(i.id) ? "primary fit" : "ghost fit"}
-          onClick={() => onToggle(i.id)}
-        >
-          {i.name}
-        </button>
-      ))}
+    <div>
+      <input
+        id="recipe-ingredient-filter"
+        list="recipe-ingredient-filter-options"
+        value={text}
+        onChange={(e) => handleChange(e.target.value)}
+        placeholder="Search ingredients…"
+        autoComplete="off"
+      />
+      <datalist id="recipe-ingredient-filter-options">
+        {availableItems.map((i) => <option key={i.id} value={i.name} />)}
+      </datalist>
+      {selectedItems.length > 0 && (
+        <div className="row" style={{ flexWrap: "wrap", marginTop: "0.4rem" }}>
+          {selectedItems.map((i) => (
+            <button
+              key={i.id}
+              type="button"
+              className="primary fit"
+              onClick={() => onChange(selected.filter((x) => x !== i.id))}
+            >
+              {i.name} ×
+            </button>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
@@ -491,12 +522,6 @@ export default function Recipes() {
     }
   }
 
-  function toggleIngredientFilter(id) {
-    setIngredientFilter((cur) =>
-      cur.includes(id) ? cur.filter((x) => x !== id) : [...cur, id]
-    );
-  }
-
   return (
     <main>
       <div className="row" style={{ alignItems: "center" }}>
@@ -549,11 +574,11 @@ export default function Recipes() {
         </div>
         {ingredients.length > 0 && (
           <div style={{ marginTop: "0.6rem" }}>
-            <label>Filter by ingredients</label>
-            <IngredientChips
-              items={ingredients}
+            <label htmlFor="recipe-ingredient-filter">Filter by ingredients</label>
+            <IngredientFilterSearch
+              ingredients={ingredients}
               selected={ingredientFilter}
-              onToggle={toggleIngredientFilter}
+              onChange={setIngredientFilter}
             />
           </div>
         )}
