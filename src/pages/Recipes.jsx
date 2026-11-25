@@ -112,6 +112,43 @@ async function resolveIngredientRows(houseId, houseIngredients, rows) {
   return resolved;
 }
 
+function RecipeDetailModal({ recipe, onClose }) {
+  return (
+    <div className="modal-overlay" onClick={onClose}>
+      <div className="modal" onClick={(e) => e.stopPropagation()}>
+        <h2>{recipe.name}</h2>
+        {recipe.category_name && (
+          <p className="sub" style={{ marginTop: 0 }}>{recipe.category_name}</p>
+        )}
+
+        <h3 style={{ marginTop: "1rem" }}>Ingredients</h3>
+        {recipe.recipe_ingredients?.length > 0 ? (
+          <ul className="plain">
+            {recipe.recipe_ingredients.map((ri) => (
+              <li key={ri.id} style={{ padding: "0.2rem 0" }}>
+                {ri.amount} {ri.unit} {ri.ingredient_name}
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p className="empty">No ingredients listed.</p>
+        )}
+
+        <h3 style={{ marginTop: "1rem" }}>Instructions</h3>
+        {recipe.instructions ? (
+          <p style={{ whiteSpace: "pre-wrap" }}>{recipe.instructions}</p>
+        ) : (
+          <p className="empty">No instructions added.</p>
+        )}
+
+        <div className="row" style={{ marginTop: "1rem" }}>
+          <button className="ghost fit" onClick={onClose}>Close</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function CategoryManager({ houses, categories, run }) {
   const [form, setForm] = useState({ house_id: "", name: "" });
 
@@ -286,6 +323,7 @@ function AddRecipeModal({ houses, categories, ingredients, onClose, onCreated })
 
 function RecipeCard({ recipe, categories, ingredients, run }) {
   const [editing, setEditing] = useState(false);
+  const [viewing, setViewing] = useState(false);
   const [form, setForm] = useState(null);
 
   const houseCategories = categories.filter((c) => c.house === recipe.house);
@@ -375,21 +413,27 @@ function RecipeCard({ recipe, categories, ingredients, run }) {
     );
   }
 
+  const ingredientCount = recipe.recipe_ingredients?.length || 0;
+
   return (
     <li className="chore">
       <div className="meta">
-        <div className="name">{recipe.name}</div>
+        <button
+          type="button"
+          className="name"
+          onClick={() => setViewing(true)}
+          style={{
+            background: "none", border: "none", padding: 0, margin: 0,
+            font: "inherit", fontWeight: 700, color: "inherit",
+            cursor: "pointer", textAlign: "left", display: "block",
+          }}
+        >
+          {recipe.name}
+        </button>
         <ul className="sub-list">
           {recipe.category_name && <li>{recipe.category_name}</li>}
-          {recipe.recipe_ingredients?.map((ri) => (
-            <li key={ri.id}>{ri.amount} {ri.unit} {ri.ingredient_name}</li>
-          ))}
+          <li>{ingredientCount} ingredient{ingredientCount === 1 ? "" : "s"}</li>
         </ul>
-        {recipe.instructions && (
-          <p style={{ marginTop: "0.4rem", fontSize: "0.85rem", color: "var(--muted)" }}>
-            {recipe.instructions}
-          </p>
-        )}
       </div>
       <div className="row chore-actions" style={{ gap: "0.4rem" }}>
         <button className="fit" onClick={startEdit}>Edit</button>
@@ -403,6 +447,7 @@ function RecipeCard({ recipe, categories, ingredients, run }) {
           Delete
         </button>
       </div>
+      {viewing && <RecipeDetailModal recipe={recipe} onClose={() => setViewing(false)} />}
     </li>
   );
 }
