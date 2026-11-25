@@ -1,6 +1,18 @@
 import React, { useEffect, useState } from "react";
 import { api } from "../api";
 
+const UNIT_OPTIONS = [
+  { value: "g", label: "g" },
+  { value: "kg", label: "kg" },
+  { value: "ml", label: "ml" },
+  { value: "l", label: "l" },
+  { value: "tsp", label: "tsp" },
+  { value: "tbsp", label: "tbsp" },
+  { value: "cup", label: "cup" },
+  { value: "piece", label: "piece" },
+  { value: "pinch", label: "pinch" },
+];
+
 function IngredientChips({ items, selected, onToggle }) {
   return (
     <div className="row" style={{ flexWrap: "wrap" }}>
@@ -14,6 +26,61 @@ function IngredientChips({ items, selected, onToggle }) {
           {i.name}
         </button>
       ))}
+    </div>
+  );
+}
+
+function RecipeIngredientRows({ rows, ingredients, onChange, idPrefix }) {
+  function updateRow(idx, patch) {
+    onChange(rows.map((r, i) => (i === idx ? { ...r, ...patch } : r)));
+  }
+  function removeRow(idx) {
+    onChange(rows.filter((_, i) => i !== idx));
+  }
+  function addRow() {
+    onChange([...rows, { ingredient_id: "", amount: "", unit: UNIT_OPTIONS[0].value }]);
+  }
+
+  return (
+    <div>
+      {rows.map((row, idx) => (
+        <div className="row" key={idx}>
+          <div>
+            <label htmlFor={`${idPrefix}-ingredient-${idx}`}>Ingredient</label>
+            <select
+              id={`${idPrefix}-ingredient-${idx}`}
+              value={row.ingredient_id}
+              onChange={(e) => updateRow(idx, { ingredient_id: e.target.value })}
+            >
+              <option value="">Select…</option>
+              {ingredients.map((i) => <option key={i.id} value={i.id}>{i.name}</option>)}
+            </select>
+          </div>
+          <div style={{ maxWidth: 110 }}>
+            <label htmlFor={`${idPrefix}-amount-${idx}`}>Amount</label>
+            <input
+              id={`${idPrefix}-amount-${idx}`}
+              type="number"
+              min="0"
+              step="0.01"
+              value={row.amount}
+              onChange={(e) => updateRow(idx, { amount: e.target.value })}
+            />
+          </div>
+          <div style={{ maxWidth: 110 }}>
+            <label htmlFor={`${idPrefix}-unit-${idx}`}>Unit</label>
+            <select
+              id={`${idPrefix}-unit-${idx}`}
+              value={row.unit}
+              onChange={(e) => updateRow(idx, { unit: e.target.value })}
+            >
+              {UNIT_OPTIONS.map((u) => <option key={u.value} value={u.value}>{u.label}</option>)}
+            </select>
+          </div>
+          <button type="button" className="danger fit" onClick={() => removeRow(idx)}>Remove</button>
+        </div>
+      ))}
+      <button type="button" className="ghost fit" onClick={addRow}>+ Add ingredient</button>
     </div>
   );
 }
@@ -97,7 +164,7 @@ function AddRecipeModal({ houses, categories, ingredients, onClose, onCreated })
     house_id: houses[0] ? String(houses[0].id) : "",
     name: "",
     category_id: "",
-    ingredient_ids: [],
+    ingredient_rows: [],
     instructions: "",
   }));
   const [msg, setMsg] = useState(null);
@@ -105,16 +172,9 @@ function AddRecipeModal({ houses, categories, ingredients, onClose, onCreated })
 
   const houseCategories = categories.filter((c) => String(c.house) === form.house_id);
   const houseIngredients = ingredients.filter((i) => String(i.house) === form.house_id);
-  const canSubmit = form.name.trim() && form.house_id;
-
-  function toggleIngredient(id) {
-    setForm((f) => ({
-      ...f,
-      ingredient_ids: f.ingredient_ids.includes(id)
-        ? f.ingredient_ids.filter((x) => x !== id)
-        : [...f.ingredient_ids, id],
-    }));
-  }
+  const chosenRows = form.ingredient_rows.filter((r) => r.ingredient_id);
+  const rowsValid = chosenRows.every((r) => r.amount !== "" && Number(r.amount) > 0);
+  const canSubmit = form.name.trim() && form.house_id && rowsValid;
 
   async function submit() {
     setSaving(true);
@@ -123,7 +183,11 @@ function AddRecipeModal({ houses, categories, ingredients, onClose, onCreated })
         house: Number(form.house_id),
         name: form.name.trim(),
         category: form.category_id ? Number(form.category_id) : null,
-        ingredients: form.ingredient_ids,
+        recipe_ingredients: chosenRows.map((r) => ({
+          ingredient: Number(r.ingredient_id),
+          amount: Number(r.amount),
+          unit: r.unit,
+        })),
         instructions: form.instructions.trim(),
       });
       onCreated();
@@ -145,7 +209,7 @@ function AddRecipeModal({ houses, categories, ingredients, onClose, onCreated })
         <select
           id="recipe-house"
           value={form.house_id}
-          onChange={(e) => setForm((f) => ({ ...f, house_id: e.target.value, category_id: "", ingredient_ids: [] }))}
+          onChange={(e) => setForm((f) => ({ ...f, house_id: e.target.value, category_id: "", ingredient_rows: [] }))}
         >
           <option value="">Select a house…</option>
           {houses.map((h) => <option key={h.id} value={h.id}>{h.name}</option>)}
@@ -172,10 +236,11 @@ function AddRecipeModal({ houses, categories, ingredients, onClose, onCreated })
         {houseIngredients.length > 0 && (
           <>
             <label>Ingredients</label>
-            <IngredientChips
-              items={houseIngredients}
-              selected={form.ingredient_ids}
-              onToggle={toggleIngredient}
+            <RecipeIngredientRows
+              idPrefix="add-recipe"
+              rows={form.ingredient_rows}
+              ingredients={houseIngredients}
+              onChange={(rows) => setForm((f) => ({ ...f, ingredient_rows: rows }))}
             />
           </>
         )}
@@ -210,27 +275,30 @@ function RecipeCard({ recipe, categories, ingredients, run }) {
     setForm({
       name: recipe.name,
       category_id: recipe.category ? String(recipe.category) : "",
-      ingredient_ids: recipe.ingredients || [],
+      ingredient_rows: (recipe.recipe_ingredients || []).map((ri) => ({
+        ingredient_id: String(ri.ingredient),
+        amount: String(ri.amount),
+        unit: ri.unit,
+      })),
       instructions: recipe.instructions || "",
     });
     setEditing(true);
   }
 
-  function toggleIngredient(id) {
-    setForm((f) => ({
-      ...f,
-      ingredient_ids: f.ingredient_ids.includes(id)
-        ? f.ingredient_ids.filter((x) => x !== id)
-        : [...f.ingredient_ids, id],
-    }));
-  }
+  const chosenRows = form ? form.ingredient_rows.filter((r) => r.ingredient_id) : [];
+  const rowsValid = chosenRows.every((r) => r.amount !== "" && Number(r.amount) > 0);
+  const canSave = form && form.name.trim() && rowsValid;
 
   async function save() {
     await run(
       () => api.updateRecipe(recipe.id, {
         name: form.name.trim(),
         category: form.category_id ? Number(form.category_id) : null,
-        ingredients: form.ingredient_ids,
+        recipe_ingredients: chosenRows.map((r) => ({
+          ingredient: Number(r.ingredient_id),
+          amount: Number(r.amount),
+          unit: r.unit,
+        })),
         instructions: form.instructions.trim(),
       }),
       `Recipe '${form.name}' updated.`
@@ -266,10 +334,11 @@ function RecipeCard({ recipe, categories, ingredients, run }) {
           {houseIngredients.length > 0 && (
             <div style={{ marginTop: "0.5rem" }}>
               <label>Ingredients</label>
-              <IngredientChips
-                items={houseIngredients}
-                selected={form.ingredient_ids}
-                onToggle={toggleIngredient}
+              <RecipeIngredientRows
+                idPrefix={`edit-recipe-${recipe.id}`}
+                rows={form.ingredient_rows}
+                ingredients={houseIngredients}
+                onChange={(rows) => setForm((f) => ({ ...f, ingredient_rows: rows }))}
               />
             </div>
           )}
@@ -282,7 +351,7 @@ function RecipeCard({ recipe, categories, ingredients, run }) {
           />
         </div>
         <div className="row chore-actions" style={{ gap: "0.4rem" }}>
-          <button className="primary fit" disabled={!form.name.trim()} onClick={save}>Save</button>
+          <button className="primary fit" disabled={!canSave} onClick={save}>Save</button>
           <button className="ghost fit" onClick={() => setEditing(false)}>Cancel</button>
         </div>
       </li>
@@ -295,9 +364,9 @@ function RecipeCard({ recipe, categories, ingredients, run }) {
         <div className="name">{recipe.name}</div>
         <ul className="sub-list">
           {recipe.category_name && <li>{recipe.category_name}</li>}
-          {recipe.ingredients_detail?.length > 0 && (
-            <li>{recipe.ingredients_detail.map((i) => i.name).join(", ")}</li>
-          )}
+          {recipe.recipe_ingredients?.map((ri) => (
+            <li key={ri.id}>{ri.amount} {ri.unit} {ri.ingredient_name}</li>
+          ))}
         </ul>
         {recipe.instructions && (
           <p style={{ marginTop: "0.4rem", fontSize: "0.85rem", color: "var(--muted)" }}>
